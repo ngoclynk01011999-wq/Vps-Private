@@ -1,164 +1,81 @@
-name: 🖥️ WINDOWS RDP CÁ NHÂN (SIÊU SẠCH + CHROME)
+name: 🖥️ WINDOWS RDP NATIVE (TAILSCALE CHÍNH CHỦ + CHROME)
 
 on:
   workflow_dispatch:
     inputs:
-      os_version:
-        description: "📀 Select Operating System"
+      tailscale_key:
+        description: "🔑 Tailscale Auth Key:"
         required: true
-        default: "Windows 10 Professional (4vCPU | 8GB RAM)"
-        type: choice
-        options:
-          - "Windows 10 Professional (4vCPU | 8GB RAM)"
+        default: "tskey-auth-kRVu78TGJn11CNTRL-yrfYH4vWGz6fCkFQveR2z6axLDLrVpHP5"
 
 permissions:
   contents: read
 
 jobs:
-  windows-rdp:
-    name: "Windows Personal RDP"
-    runs-on: ubuntu-latest
+  native-windows:
+    name: "Native Windows RDP"
+    runs-on: windows-latest
     timeout-minutes: 360
 
     steps:
-      - name: 🔧 Initializing Clean Windows System
+      - name: 🛡️ Tối ưu hóa Hệ Thống (Tắt Defender & Firewall)
+        shell: powershell
         run: |
-          set -e
-          sudo apt-get update > /dev/null 2>&1
+          Write-Host "Dang don dep tuong lua va Defender cho muot..."
+          Set-MpPreference -DisableRealtimeMonitoring $true
+          Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
 
-          echo "🔄 Setting up pure Windows environment..."
-          VERSION="10"
-          
-          # --- BÙA TỰ ĐỘNG CÀI GOOGLE CHROME ---
-          mkdir -p oem
-          cat > oem/install.bat <<'BAT'
-          @echo off
-          echo [OEM] Dang tai va cai dat Google Chrome ngam...
-          curl -L -o "C:\OEM\ChromeSetup.exe" "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
-          start /wait "" "C:\OEM\ChromeSetup.exe" /silent /install
-          echo [OEM] Cai dat Chrome hoan tat!
-          BAT
-
-          # Cấu hình máy ảo Windows nguyên bản (Đã nối cáp ổ OEM)
-          cat > docker-compose.yml <<EOF
-          version: "3.9"
-          services:
-            windows:
-              image: dockurr/windows
-              container_name: windows_rdp
-              privileged: true
-              environment:
-                VERSION: "$VERSION"
-                USERNAME: "user"
-                PASSWORD: "ngoc0102@"
-                RAM_SIZE: "8G"
-                CPU_CORES: "4"
-                DISK_SIZE: "60G"
-              devices:
-                - /dev/kvm
-              ports:
-                - "3389:3389"
-                - "8006:8006"
-              volumes:
-                - ./oem:/oem
-          EOF
-
-          # Khởi động Docker ngầm
-          docker compose up -d > /dev/null 2>&1
-
-          # Tải và kích hoạt Kami Tunnel mở đường hầm RDP/Web
-          wget -q https://github.com/kami2k1/tunnel/releases/latest/download/kami-tunnel-linux-amd64.tar.gz
-          tar -xzf kami-tunnel-linux-amd64.tar.gz > /dev/null 2>&1
-          chmod +x kami-tunnel
-
-          nohup ./kami-tunnel 3389 > kami_tunnel_rdp.log 2>&1 &
-          echo "RDP Tunnel PID: $!"
-          sleep 5
-          nohup ./kami-tunnel 8006 > kami_tunnel_web.log 2>&1 &
-          echo "Web Tunnel PID: $!"
-
-      - name: 🌐 LẤY THÔNG TIN ĐĂNG NHẬP
+      - name: 👤 Cấu hình Tài khoản RDP
+        shell: cmd
         run: |
-          echo "🔄 Đang lấy địa chỉ IP kết nối..."
-          echo ""
+          echo Dang dat lai mat khau cho tai khoan he thong...
+          net user runneradmin ngoc0102@
 
-          echo "⏳ Waiting for RDP tunnel (Port 3389)..."
-          RDP_IP=""
-          RDP_RETRY=0
-
-          while [ -z "$RDP_IP" ] && [ $RDP_RETRY -lt 60 ]; do
-            if [ -f kami_tunnel.txt ]; then
-              RDP_CONTENT=$(cat kami_tunnel.txt 2>/dev/null | head -1)
-              if [[ "$RDP_CONTENT" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
-                RDP_IP="$RDP_CONTENT"
-                break
-              fi
-            fi
-            sleep 2
-            RDP_RETRY=$((RDP_RETRY + 1))
-          done
-
-          if [ -z "$RDP_IP" ]; then
-            echo "❌ ERROR: Could not retrieve RDP IP"
-            exit 1
-          fi
-
-          echo "⏳ Waiting for Web Viewer tunnel (Port 8006)..."
-          sleep 3
-
-          WEB_IP=""
-          WEB_RETRY=0
-
-          while [ -z "$WEB_IP" ] && [ $WEB_RETRY -lt 60 ]; do
-            if [ -f kami_tunnel.txt ]; then
-              WEB_CONTENT=$(cat kami_tunnel.txt 2>/dev/null | tail -1)
-              if [[ "$WEB_CONTENT" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]] && [ "$WEB_CONTENT" != "$RDP_IP" ]; then
-                WEB_IP="$WEB_CONTENT"
-                break
-              fi
-            fi
-            sleep 2
-            WEB_RETRY=$((WEB_RETRY + 1))
-          done
-
-          if [ -z "$WEB_IP" ]; then
-            BASE_IP="${RDP_IP%:*}"
-            WEB_IP="${BASE_IP}:8006"
-          fi
-
-          echo ""
-          echo "╔═══════════════════════════════════════════════════════════════════════╗"
-          echo "║ ✅ WINDOWS 10 PRO - ĐÃ SẴN SÀNG SỬ DỤNG                               ║"
-          echo "╠═══════════════════════════════════════════════════════════════════════╣"
-          echo "║ 🌐  Kết nối RDP    : $RDP_IP                                         ║"
-          echo "║ 👤  Tài khoản      : user                                            ║"
-          echo "║ 🔐  Mật khẩu       : ngoc0102@                                       ║"
-          echo "║ 🌍  Xem trên Web   : http://$WEB_IP                                  ║"
-          echo "╚═══════════════════════════════════════════════════════════════════════╝"
-          echo ""
-
-          echo "RDP_IP=$RDP_IP" >> $GITHUB_ENV
-          echo "WEB_IP=$WEB_IP" >> $GITHUB_ENV
-
-      - name: ⏰ Giữ Kết Nối (6 Tiếng)
+      - name: 🔓 Mở khóa Remote Desktop (RDP)
+        shell: powershell
         run: |
-          echo ""
-          echo "🟢 Session started - Đang duy trì máy chủ..."
-          echo ""
+          Write-Host "Dang bat tinh nang Remote Desktop..."
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
 
-          for i in {1..72}; do
-            ELAPSED=$((i * 5))
-            REMAINING=$((360 - ELAPSED))
+      - name: 🌐 Cài đặt Google Chrome
+        shell: powershell
+        run: |
+          Write-Host "Dang tai va cai dat Google Chrome ngam..."
+          $Path = $env:TEMP + "\chrome_installer.exe"
+          Invoke-WebRequest -Uri "https://dl.google.com/chrome/install/latest/chrome_installer.exe" -OutFile $Path
+          Start-Process -FilePath $Path -ArgumentList "/silent /install" -Wait
+          Write-Host "Cai dat Chrome hoan tat!"
 
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "🟢 [$(date +'%Y-%m-%d %H:%M:%S')] MÁY CHỦ ĐANG HOẠT ĐỘNG"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "⏱️  Thời gian đã chạy : ${ELAPSED} phút"
-            echo "⏳  Thời gian còn lại : ${REMAINING} phút"
-            echo "🖥️  RDP Connection    : $RDP_IP"
-            echo "🌐  Web Viewer        : http://$WEB_IP"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo ""
+      - name: 🦎 Kết nối mạng Tailscale (Bản v3 VIP)
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ github.event.inputs.tailscale_key }}
 
-            sleep 300
-          done
+      - name: 📱 LẤY THÔNG TIN KẾT NỐI RDP (TAILSCALE)
+        shell: powershell
+        run: |
+          $rdp_ip = tailscale ip -4
+          Write-Host ""
+          Write-Host "╔═══════════════════════════════════════════════════════════════════════╗"
+          Write-Host "║ ✅ NATIVE WINDOWS ĐÃ SẴN SÀNG SỬ DỤNG (TAILSCALE)                     ║"
+          Write-Host "╠═══════════════════════════════════════════════════════════════════════╣"
+          Write-Host "║ 🌐  IP Tailscale   : $rdp_ip                                          ║"
+          Write-Host "║ 👤  Tài khoản      : runneradmin                                      ║"
+          Write-Host "║ 🔐  Mật khẩu       : ngoc0102@                                        ║"
+          Write-Host "╚═══════════════════════════════════════════════════════════════════════╝"
+          Write-Host ""
+
+      - name: ⏰ Giữ Kết Nối Hệ Thống (6 Tiếng)
+        shell: powershell
+        run: |
+          Write-Host "🟢 Dang duy tri phien lam viec Native qua Tailscale..."
+          $timeout = 360 * 60
+          $interval = 300
+          $elapsed = 0
+          while ($elapsed -lt $timeout) {
+              Start-Sleep -Seconds $interval
+              $elapsed += $interval
+              Write-Host "✅ May chu van dang hoat dong em ai... ($($elapsed/60) / 360 phut)"
+          }
