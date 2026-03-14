@@ -1,0 +1,73 @@
+name: 🖥️ WINDOWS RDP NATIVE (TAILSCALE VIP)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tailscale_key:
+        description: "🔑 Tailscale Auth Key:"
+        required: true
+        default: "tskey-auth-kRVu78TGJn11CNTRL-yrfYH4vWGz6fCkFQveR2z6axLDLrVpHP5"
+
+permissions:
+  contents: read
+
+jobs:
+  native-windows:
+    name: "Native Windows RDP"
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: 🛡️ Tối ưu hóa Hệ Thống (Tắt Defender & Firewall)
+        shell: powershell
+        run: |
+          Write-Host "Dang don dep tuong lua va Defender cho muot..."
+          Set-MpPreference -DisableRealtimeMonitoring $true
+          Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
+
+      - name: 👤 Cấu hình Tài khoản RDP
+        shell: cmd
+        run: |
+          echo Dang dat lai mat khau cho tai khoan he thong...
+          net user runneradmin ngoc0102@
+          net localgroup administrators runneradmin /add >nul 2>&1 || echo OK
+
+      - name: 🔓 Mở khóa Remote Desktop (RDP)
+        shell: powershell
+        run: |
+          Write-Host "Dang bat tinh nang Remote Desktop..."
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+
+      - name: 🦎 Kết nối mạng Tailscale VIP
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ github.event.inputs.tailscale_key }}
+
+      - name: 📱 LẤY THÔNG TIN KẾT NỐI RDP (TAILSCALE)
+        shell: powershell
+        run: |
+          $rdp_ip = tailscale ip -4
+          Write-Host ""
+          Write-Host "╔═══════════════════════════════════════════════════════════════════════╗"
+          Write-Host "║ ✅ NATIVE WINDOWS ĐÃ SẴN SÀNG SỬ DỤNG (TAILSCALE)                     ║"
+          Write-Host "╠═══════════════════════════════════════════════════════════════════════╣"
+          Write-Host "║ 🌐  IP Tailscale   : $rdp_ip                                          ║"
+          Write-Host "║ 👤  Tài khoản      : runneradmin                                      ║"
+          Write-Host "║ 🔐  Mật khẩu       : ngoc0102@                                        ║"
+          Write-Host "╚═══════════════════════════════════════════════════════════════════════╝"
+          Write-Host ""
+
+      - name: ⏰ Giữ Kết Nối Hệ Thống (6 Tiếng)
+        shell: powershell
+        run: |
+          Write-Host "🟢 Dang duy tri phien lam viec Native qua Tailscale..."
+          $timeout = 360 * 60
+          $interval = 300
+          $elapsed = 0
+          while ($elapsed -lt $timeout) {
+              Start-Sleep -Seconds $interval
+              $elapsed += $interval
+              Write-Host "✅ May chu van dang hoat dong em ai... ($($elapsed/60) / 360 phut)"
+          }
