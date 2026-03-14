@@ -30,7 +30,6 @@ jobs:
         run: |
           echo Dang dat lai mat khau cho tai khoan he thong...
           net user runneradmin ngoc0102@
-          net localgroup administrators runneradmin /add >nul 2>&1 || echo OK
 
       - name: 🔓 Mở khóa Remote Desktop (RDP)
         shell: powershell
