@@ -18,20 +18,20 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: 🛡️ Tối ưu hóa Hệ Thống (Tắt Defender & Firewall)
+      - name: 🛡️ Toi uu hoa He Thong (Tat Defender & Firewall)
         shell: powershell
         run: |
           Write-Host "Dang don dep tuong lua va Defender cho muot..."
           Set-MpPreference -DisableRealtimeMonitoring $true
           Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
 
-      - name: 👤 Cấu hình Tài khoản RDP
+      - name: 👤 Cau hinh Tai khoan RDP
         shell: cmd
         run: |
           echo Dang dat lai mat khau cho tai khoan he thong...
           net user runneradmin ngoc0102@
 
-      - name: 🔓 Mở khóa Remote Desktop (RDP)
+      - name: 🔓 Mo khoa Remote Desktop (RDP)
         shell: powershell
         run: |
           Write-Host "Dang bat tinh nang Remote Desktop..."
@@ -39,7 +39,7 @@ jobs:
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
 
-      - name: 🌐 Cài đặt Google Chrome
+      - name: 🌐 Cai dat Google Chrome
         shell: powershell
         run: |
           Write-Host "Dang tai va cai dat Google Chrome ngam..."
@@ -48,34 +48,32 @@ jobs:
           Start-Process -FilePath $Path -ArgumentList "/silent /install" -Wait
           Write-Host "Cai dat Chrome hoan tat!"
 
-      - name: 🦎 Kết nối mạng Tailscale (Bản v3 VIP)
+      - name: 🦎 Ket noi mang Tailscale
         uses: tailscale/github-action@v3
         with:
           authkey: ${{ github.event.inputs.tailscale_key }}
 
-      - name: 📱 LẤY THÔNG TIN KẾT NỐI RDP (TAILSCALE)
+      - name: 📱 LAY THONG TIN KET NOI RDP
         shell: powershell
         run: |
           $rdp_ip = tailscale ip -4
-          Write-Host ""
-          Write-Host "╔═══════════════════════════════════════════════════════════════════════╗"
-          Write-Host "║ ✅ NATIVE WINDOWS ĐÃ SẴN SÀNG SỬ DỤNG (TAILSCALE)                     ║"
-          Write-Host "╠═══════════════════════════════════════════════════════════════════════╣"
-          Write-Host "║ 🌐  IP Tailscale   : $rdp_ip                                          ║"
-          Write-Host "║ 👤  Tài khoản      : runneradmin                                      ║"
-          Write-Host "║ 🔐  Mật khẩu       : ngoc0102@                                        ║"
-          Write-Host "╚═══════════════════════════════════════════════════════════════════════╝"
-          Write-Host ""
+          Write-Host "====================================================="
+          Write-Host "  NATIVE WINDOWS DA SAN SANG SU DUNG (TAILSCALE)"
+          Write-Host "====================================================="
+          Write-Host "  IP Tailscale   : $rdp_ip"
+          Write-Host "  Tai khoan      : runneradmin"
+          Write-Host "  Mat khau       : ngoc0102@"
+          Write-Host "====================================================="
 
-      - name: ⏰ Giữ Kết Nối Hệ Thống (6 Tiếng)
+      - name: ⏰ Giu Ket Noi He Thong (6 Tieng)
         shell: powershell
         run: |
-          Write-Host "🟢 Dang duy tri phien lam viec Native qua Tailscale..."
+          Write-Host "Dang duy tri phien lam viec Native qua Tailscale..."
           $timeout = 360 * 60
           $interval = 300
           $elapsed = 0
           while ($elapsed -lt $timeout) {
               Start-Sleep -Seconds $interval
               $elapsed += $interval
-              Write-Host "✅ May chu van dang hoat dong em ai... ($($elapsed/60) / 360 phut)"
+              Write-Host "May chu van dang hoat dong em ai... ($($elapsed/60) / 360 phut)"
           }
