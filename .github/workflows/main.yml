@@ -39,15 +39,24 @@ jobs:
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
 
-      - name: 🦎 Kết nối mạng Tailscale VIP
-        uses: tailscale/github-action@v2
-        with:
-          authkey: ${{ github.event.inputs.tailscale_key }}
+      - name: 🦎 Cài đặt & Đăng nhập Tailscale (Thủ công VIP)
+        shell: powershell
+        run: |
+          Write-Host "Dang tai Tailscale cho Windows Native..."
+          Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe" -OutFile "tailscale.exe"
+          
+          Write-Host "Dang bam nut cai dat ngam..."
+          Start-Process -FilePath ".\tailscale.exe" -ArgumentList "/quiet" -Wait
+          Start-Sleep -Seconds 5
+          
+          Write-Host "Dang vut Key cua bro vao de thong ong mang..."
+          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ github.event.inputs.tailscale_key }} --unattended
+          Start-Sleep -Seconds 3
 
       - name: 📱 LẤY THÔNG TIN KẾT NỐI RDP (TAILSCALE)
         shell: powershell
         run: |
-          $rdp_ip = tailscale ip -4
+          $rdp_ip = & "C:\Program Files\Tailscale\tailscale.exe" ip -4
           Write-Host ""
           Write-Host "╔═══════════════════════════════════════════════════════════════════════╗"
           Write-Host "║ ✅ NATIVE WINDOWS ĐÃ SẴN SÀNG SỬ DỤNG (TAILSCALE)                     ║"
