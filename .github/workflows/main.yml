@@ -39,15 +39,6 @@ jobs:
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
 
-      - name: 🌐 Cai dat Google Chrome
-        shell: powershell
-        run: |
-          Write-Host "Dang tai va cai dat Google Chrome ngam..."
-          $Path = $env:TEMP + "\chrome_installer.exe"
-          Invoke-WebRequest -Uri "https://dl.google.com/chrome/install/latest/chrome_installer.exe" -OutFile $Path
-          Start-Process -FilePath $Path -ArgumentList "/silent /install" -Wait
-          Write-Host "Cai dat Chrome hoan tat!"
-
       - name: 🦎 Ket noi mang Tailscale
         uses: tailscale/github-action@v3
         with:
